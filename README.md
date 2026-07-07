@@ -28,9 +28,31 @@ The engine is built on three primary pillars:
 1. **The Game**: Install the game **[Woody Sort](https://play.google.com/store/apps/details?id=com.unicostudio.balltubes)** (or similar compatible color-sorting game) on your Android device. 
 2. **Device Connection**: Connect your Android device via USB to your computer and ensure **USB Debugging** is enabled in Developer Options.
 3. **Environment Setup**: 
-   - Ensure Python is installed.
-   - Activate your virtual environment.
-   - Install the required dependencies: `pip install opencv-python numpy`
+   Ensure you have Python 3.9+ installed. Then, set up a virtual environment and install the required dependencies:
+
+   **Create the virtual environment:**
+   ```bash
+   python -m venv .venv
+   ```
+
+   **Activate the virtual environment:**
+   - **Windows (PowerShell):**
+     ```powershell
+     .\.venv\Scripts\Activate.ps1
+     ```
+   - **Windows (Command Prompt):**
+     ```cmd
+     .venv\Scripts\activate.bat
+     ```
+   - **macOS / Linux:**
+     ```bash
+     source .venv/bin/activate
+     ```
+
+   **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 ## Usage
 
