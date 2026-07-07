@@ -25,7 +25,7 @@ The engine is built on three primary pillars:
 
 ## Prerequisites & Setup
 
-1. **The Game**: Install the game **[Woody Sort](https://play.google.com/store/apps/details?id=com.athena.woodysort.waterpuzzle)** (or similar compatible color-sorting game) on your Android device. 
+1. **The Game**: Install the game **[Woody Sort](https://play.google.com/store/apps/details?id=com.unicostudio.balltubes)** (or similar compatible color-sorting game) on your Android device. 
 2. **Device Connection**: Connect your Android device via USB to your computer and ensure **USB Debugging** is enabled in Developer Options.
 3. **Environment Setup**: 
    - Ensure Python is installed.

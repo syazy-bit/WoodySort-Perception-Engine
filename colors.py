@@ -132,6 +132,3 @@ def classify_color(region_bgr: np.ndarray) -> Optional[str]:
         return None
 
     return best_color
-
-
-

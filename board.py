@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class Board:
     tubes: Tuple[Tuple[str, ...], ...]
     capacities: Tuple[int, ...]
@@ -21,12 +21,15 @@ class Board:
     as ``tubes``.
     """
 
-    def __post_init__(self) -> None:
+    def __init__(
+        self, tubes: Iterable[Iterable[Optional[str]]], capacities: Iterable[int]
+    ) -> None:
         normalized = []
-        for tube in self.tubes:
+        for tube in tubes:
             cleaned = tuple(item for item in tube if item not in {"", None})
             normalized.append(cleaned)
         object.__setattr__(self, "tubes", tuple(normalized))
+        object.__setattr__(self, "capacities", tuple(capacities))
         if len(self.tubes) != len(self.capacities):
             raise ValueError(
                 f"Tube count ({len(self.tubes)}) does not match "
@@ -41,7 +44,7 @@ class Board:
 
     def copy(self) -> "Board":
         return Board(
-            [list(tube) for tube in self.tubes],
+            self.tubes,
             capacities=self.capacities,
         )
 
@@ -100,7 +103,7 @@ class Board:
         # Every tube must be homogeneous (or empty)
         if not all(len(tube) == 0 or len(set(tube)) == 1 for tube in self.tubes):
             return False
-            
+
         # No two tubes can share the same color
         colors_seen = set()
         for tube in self.tubes:

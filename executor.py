@@ -65,8 +65,12 @@ def execute_moves(
     """
     for src_idx, dst_idx in moves:
         if src_idx < 0 or src_idx >= len(tubes):
-            raise IndexError(f"Source tube index {src_idx} out of range (0-{len(tubes) - 1})")
+            raise IndexError(
+                f"Source tube index {src_idx} out of range (0-{len(tubes) - 1})"
+            )
         if dst_idx < 0 or dst_idx >= len(tubes):
-            raise IndexError(f"Destination tube index {dst_idx} out of range (0-{len(tubes) - 1})")
+            raise IndexError(
+                f"Destination tube index {dst_idx} out of range (0-{len(tubes) - 1})"
+            )
         execute_move(tubes[src_idx], tubes[dst_idx])
         time.sleep(delay_s)

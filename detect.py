@@ -15,7 +15,7 @@ No hardcoded pixel coordinates.  Works for any tube count and screen size.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, cast
 
 import cv2
 import numpy as np
@@ -23,11 +23,22 @@ import numpy as np
 from colors import HSV_RANGES, MIN_MATCH_FRACTION, classify_color
 
 # Ball colors only (excludes tube-outline colors if they conflict, but Cyan is a valid ball color)
-BALL_COLORS = {"Red", "Orange", "Yellow", "Green", "Cyan", "Purple", "Pink", "Violet", "Blue"}
+BALL_COLORS = {
+    "Red",
+    "Orange",
+    "Yellow",
+    "Green",
+    "Cyan",
+    "Purple",
+    "Pink",
+    "Violet",
+    "Blue",
+}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Data structures
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class Tube:
@@ -38,6 +49,7 @@ class Tube:
     row: int  # 0-indexed row (top = 0)
     col: int  # 0-indexed column within row
     index: int  # 0-indexed sequential order
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Tube-outline detection constants
@@ -67,7 +79,7 @@ MERGE_IOU_THRESHOLD = 0.3
 # Ball-slot detection constants
 # ─────────────────────────────────────────────────────────────────────────────
 
-TUBE_TOP_MARGIN_FRAC = 0.12  
+TUBE_TOP_MARGIN_FRAC = 0.12
 TUBE_BOTTOM_MARGIN_FRAC = 0.02
 TUBE_SIDE_MARGIN_FRAC = 0.13
 
@@ -84,23 +96,31 @@ ROW_GAP_FRACTION = 0.5
 # Public API
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class BoardDetector:
     """Detects tubes and classifies ball colours from a Woody Sort screenshot."""
 
-    def detect_board(self, image: np.ndarray) -> Tuple[List[Tube], List[List[Optional[str]]], List[int]]:
+    def detect_board(
+        self, image: np.ndarray
+    ) -> Tuple[List[Tube], List[List[Optional[str]]], List[int]]:
         tubes = self.detect_tubes(image)
         capacities = [self._calculate_capacity(tube) for tube in tubes]
         board = [
-            self.detect_balls(image, tube, cap)
-            for tube, cap in zip(tubes, capacities)
+            self.detect_balls(image, tube, cap) for tube, cap in zip(tubes, capacities)
         ]
         return tubes, board, capacities
 
     def detect_tubes(self, image: np.ndarray) -> List[Tube]:
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        
-        cyan_lower = np.array([TUBE_OUTLINE_H_LOWER, TUBE_OUTLINE_S_LOWER, TUBE_OUTLINE_V_LOWER], dtype=np.uint8)
-        cyan_upper = np.array([TUBE_OUTLINE_H_UPPER, TUBE_OUTLINE_S_UPPER, TUBE_OUTLINE_V_UPPER], dtype=np.uint8)
+
+        cyan_lower = np.array(
+            [TUBE_OUTLINE_H_LOWER, TUBE_OUTLINE_S_LOWER, TUBE_OUTLINE_V_LOWER],
+            dtype=np.uint8,
+        )
+        cyan_upper = np.array(
+            [TUBE_OUTLINE_H_UPPER, TUBE_OUTLINE_S_UPPER, TUBE_OUTLINE_V_UPPER],
+            dtype=np.uint8,
+        )
         cyan_mask = cv2.inRange(hsv, cyan_lower, cyan_upper)
 
         gray_lower = np.array([0, 0, 150], dtype=np.uint8)
@@ -110,7 +130,8 @@ class BoardDetector:
         mask = cv2.bitwise_or(cyan_mask, gray_mask)
 
         ks = max(int(image.shape[1] * MORPH_KERNEL_FRACTION), MORPH_KERNEL_MIN)
-        if ks % 2 == 0: ks += 1
+        if ks % 2 == 0:
+            ks += 1
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (ks, ks))
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
@@ -120,9 +141,11 @@ class BoardDetector:
         candidates = []
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
-            if w == 0 or w * h < min_area: continue
+            if w == 0 or w * h < min_area:
+                continue
             aspect = h / w
-            if aspect < MIN_TUBE_ASPECT_RATIO or aspect > MAX_TUBE_ASPECT_RATIO: continue
+            if aspect < MIN_TUBE_ASPECT_RATIO or aspect > MAX_TUBE_ASPECT_RATIO:
+                continue
             candidates.append((x, y, w, h))
 
         merged = _merge_overlapping_boxes(candidates, MERGE_IOU_THRESHOLD)
@@ -138,7 +161,9 @@ class BoardDetector:
         cap = round(inner_h / inner_w)
         return max(2, min(cap, 6))
 
-    def detect_balls(self, image: np.ndarray, tube: Tube, capacity: int) -> List[Optional[str]]:
+    def detect_balls(
+        self, image: np.ndarray, tube: Tube, capacity: int
+    ) -> List[Optional[str]]:
         x, y, w, h = tube.bbox
         side_margin = int(w * TUBE_SIDE_MARGIN_FRAC)
         top_margin = int(h * TUBE_TOP_MARGIN_FRAC)
@@ -168,9 +193,9 @@ class BoardDetector:
             else:
                 break
 
-
-
-        full = [None] * (capacity - len(colors)) + list(reversed(colors))
+        full = [cast(Optional[str], None)] * (capacity - len(colors)) + list(
+            reversed(colors)
+        )
         return full
 
     def _classify_ball_color(self, region_bgr: np.ndarray) -> Optional[str]:
@@ -224,13 +249,14 @@ class BoardDetector:
                 (0, 255, 0),
                 2,
             )
-            
-            capacity = len(contents)
+
             inner_w = max(w - 2 * int(w * TUBE_SIDE_MARGIN_FRAC), 1)
             slot_height = inner_w
             inner_y = y + int(h * TUBE_TOP_MARGIN_FRAC)
-            inner_h = max(h - int(h * TUBE_TOP_MARGIN_FRAC) - int(h * TUBE_BOTTOM_MARGIN_FRAC), 1)
-            
+            inner_h = max(
+                h - int(h * TUBE_TOP_MARGIN_FRAC) - int(h * TUBE_BOTTOM_MARGIN_FRAC), 1
+            )
+
             for si, color in enumerate(reversed(contents)):
                 if color is not None:
                     cy = inner_y + inner_h - int((si + 0.5) * slot_height)
@@ -246,20 +272,28 @@ class BoardDetector:
                     )
         return debug
 
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Helper functions
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _merge_overlapping_boxes(boxes: List[Tuple[int, int, int, int]], iou_threshold: float) -> List[Tuple[int, int, int, int]]:
-    if not boxes: return []
+
+def _merge_overlapping_boxes(
+    boxes: List[Tuple[int, int, int, int]], iou_threshold: float
+) -> List[Tuple[int, int, int, int]]:
+    if not boxes:
+        return []
     rects = np.array([[x, y, w, h] for (x, y, w, h) in boxes], dtype=np.float32)
     scores = np.ones(len(rects), dtype=np.float32)
     indices = cv2.dnn.NMSBoxes(rects.tolist(), scores.tolist(), 0.0, iou_threshold)
-    if len(indices) == 0: return []
-    return [boxes[i] for i in indices.flatten()]
+    if len(indices) == 0:
+        return []
+    return [boxes[i] for i in indices]
+
 
 def _assign_tube_positions(boxes: List[Tuple[int, int, int, int]]) -> List[Tube]:
-    if not boxes: return []
+    if not boxes:
+        return []
     avg_h = sum(h for _, _, _, h in boxes) / len(boxes)
     max_gap = avg_h * ROW_GAP_FRACTION
     sorted_by_y = sorted(boxes, key=lambda b: b[1] + b[3] / 2)
@@ -281,12 +315,14 @@ def _assign_tube_positions(boxes: List[Tuple[int, int, int, int]]) -> List[Tube]
         row_sorted = sorted(row, key=lambda b: b[0])
         for c_idx, box in enumerate(row_sorted):
             x, y, w, h = box
-            tubes.append(Tube(
-                bbox=box,
-                center=(x + w // 2, y + h // 2),
-                row=r_idx,
-                col=c_idx,
-                index=index,
-            ))
+            tubes.append(
+                Tube(
+                    bbox=box,
+                    center=(x + w // 2, y + h // 2),
+                    row=r_idx,
+                    col=c_idx,
+                    index=index,
+                )
+            )
             index += 1
     return tubes

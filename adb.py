@@ -7,7 +7,6 @@ import subprocess
 from pathlib import Path
 from typing import List
 
-
 _DEVICE_ID_PATTERN = re.compile(r"^[\w\-:.]+$")
 
 

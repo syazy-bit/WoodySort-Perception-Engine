@@ -37,7 +37,6 @@ from detect import BoardDetector, Tube
 from executor import POST_MOVE_DELAY_S, execute_move
 from solver import solve
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Logging setup
 # ─────────────────────────────────────────────────────────────────────────────
@@ -149,7 +148,9 @@ def _progress_callback(visited_count: int, depth: int) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="AutoWoody AI — Continuous Solver")
-    parser.add_argument("--dry-run", action="store_true", help="Solve once, no execution")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Solve once, no execution"
+    )
     parser.add_argument("--device", type=str, default=None, help="ADB device serial")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
@@ -202,27 +203,35 @@ def main() -> int:
             return 1
 
         log.info("Detected %d tubes", len(tubes))
-        _save_debug_image(image, tubes, raw_board, SESSION_DIR / f"move{move_count:03d}_detected.png")
+        _save_debug_image(
+            image, tubes, raw_board, SESSION_DIR / f"move{move_count:03d}_detected.png"
+        )
 
         board = _raw_board_to_solver_board(raw_board, capacities)
 
         # ── 3. Check if solved ──
         if board.is_solved():
             elapsed = time.time() - start_time
-            print(f"\nPuzzle solved!\nTotal moves: {move_count - 1}\nElapsed time: {elapsed:.1f} seconds")
-            log.info("Board is solved! Total moves: %d, Time: %.1fs", move_count - 1, elapsed)
+            print(
+                f"\nPuzzle solved!\nTotal moves: {move_count - 1}\nElapsed time: {elapsed:.1f} seconds"
+            )
+            log.info(
+                "Board is solved! Total moves: %d, Time: %.1fs", move_count - 1, elapsed
+            )
             return 0
 
         # ── 4. Solve ──
         moves = solve(board, progress_callback=_progress_callback)
         if not moves:
-            print("\nExecution stopped\nReason: Solver found no solution for this board.")
+            print(
+                "\nExecution stopped\nReason: Solver found no solution for this board."
+            )
             log.error("Solver found no solution for this board.")
             return 1
 
         first_move = moves[0]
         src, dst = first_move[0], first_move[1]
-        
+
         # Calculate total moves: current move + remaining moves from solver
         total_moves = (move_count - 1) + len(moves)
 
@@ -232,7 +241,9 @@ def main() -> int:
         print(f"Tube {src + 1} -> Tube {dst + 1}\n")
 
         if args.dry_run:
-            print(f"Dry-run mode. First move is Tube {src + 1} -> Tube {dst + 1}. Exiting.")
+            print(
+                f"Dry-run mode. First move is Tube {src + 1} -> Tube {dst + 1}. Exiting."
+            )
             log.info("Dry-run finished.")
             return 0
 
@@ -247,46 +258,67 @@ def main() -> int:
             log.error("Predicted move was invalid.")
             return 1
 
-        # If the expected board is solved, the game will instantly show a "Level Completed" 
+        # If the expected board is solved, the game will instantly show a "Level Completed"
         # popup and an ad, hiding the board. We must skip image verification.
         if expected_board.is_solved():
             elapsed = time.time() - start_time
             print("\nVerification:\nPASS (Final Move Assumed)\n")
-            print(f"Puzzle solved!\nTotal moves: {move_count}\nElapsed time: {elapsed:.1f} seconds")
-            log.info("Board is solved! Total moves: %d, Time: %.1fs", move_count, elapsed)
+            print(
+                f"Puzzle solved!\nTotal moves: {move_count}\nElapsed time: {elapsed:.1f} seconds"
+            )
+            log.info(
+                "Board is solved! Total moves: %d, Time: %.1fs", move_count, elapsed
+            )
             return 0
 
         verification_passed = False
-        max_retries = 3
-        
-        for attempt in range(1, max_retries + 1):
+        verify_board = None
+
+        timeout = 5.0
+        wait_start = time.time()
+        attempt = 0
+
+        while time.time() - wait_start < timeout:
+            attempt += 1
             after_path = SESSION_DIR / f"move{move_count:03d}_after_try{attempt}.png"
             try:
                 _capture(after_path)
             except CaptureError as exc:
-                print(f"\nExecution stopped\nReason: Verification capture failed: {exc}")
+                print(
+                    f"\nExecution stopped\nReason: Verification capture failed: {exc}"
+                )
                 log.error("Verification capture failed: %s", exc)
                 return 1
 
             verify_image = _load_image(after_path)
 
             try:
-                verify_tubes, verify_raw_board, verify_capacities = _detect(verify_image)
-                verify_board = _raw_board_to_solver_board(verify_raw_board, verify_capacities)
-                _save_debug_image(verify_image, verify_tubes, verify_raw_board, SESSION_DIR / f"move{move_count:03d}_after_detected_try{attempt}.png")
-                
+                verify_tubes, verify_raw_board, verify_capacities = _detect(
+                    verify_image
+                )
+                verify_board = _raw_board_to_solver_board(
+                    verify_raw_board, verify_capacities
+                )
+                _save_debug_image(
+                    verify_image,
+                    verify_tubes,
+                    verify_raw_board,
+                    SESSION_DIR
+                    / f"move{move_count:03d}_after_detected_try{attempt}.png",
+                )
+
                 if verify_board.tubes == expected_board.tubes:
                     verification_passed = True
                     break
                 else:
-                    log.warning("Verification failed on attempt %d", attempt)
-                    if attempt < max_retries:
-                        time.sleep(1.0)
-                        
+                    log.info(
+                        "Animation still playing (attempt %d)... waiting.", attempt
+                    )
+                    time.sleep(0.5)
+
             except RuntimeError as exc:
-                log.warning("Verification detection failed on attempt %d: %s", attempt, exc)
-                if attempt < max_retries:
-                    time.sleep(1.0)
+                log.info("Detection not ready (attempt %d): %s. Waiting.", attempt, exc)
+                time.sleep(0.5)
 
         # Log move data
         move_data = {
@@ -294,8 +326,8 @@ def main() -> int:
             "board_before": board.tubes,
             "solver_move": [src + 1, dst + 1],
             "expected_board": expected_board.tubes,
-            "detected_board": verify_board.tubes if 'verify_board' in locals() else None,
-            "verification_pass": verification_passed
+            "detected_board": verify_board.tubes if verify_board else None,
+            "verification_pass": verification_passed,
         }
         _boards_log_data.append(move_data)
         _save_json(BOARDS_JSON_FILE, _boards_log_data)
@@ -306,13 +338,19 @@ def main() -> int:
             move_count += 1
         else:
             print("Verification:\nFAIL\n")
-            print("Execution stopped\nReason: Verification failed after 3 attempts")
-            log.error("Verification FAIL for move %d after %d attempts", move_count, max_retries)
-            
+            print(
+                f"Execution stopped\nReason: Verification failed after {timeout}s timeout"
+            )
+            log.error(
+                "Verification FAIL for move %d after %.1fs timeout",
+                move_count,
+                timeout,
+            )
+
             # Print specific diff for debugging in logs
             log.error("Expected:")
             _print_board(expected_board)
-            if 'verify_board' in locals():
+            if verify_board:
                 log.error("Detected:")
                 _print_board(verify_board)
             return 1
